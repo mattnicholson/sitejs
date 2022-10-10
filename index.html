@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" class="Site">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <title>site.js</title>
+  
+  <script src="nunjucks.js"></script>
+  <script src="site.js"></script>
+  <script src="components.js"></script>
+
+
+</head>
+<body>
+	
+	
+
+	</script>
+
+	<input type="range" min="1" max="100" value="50" class="slider" data-ui="range" data-key="typeSize">
+
+	<div style="text-align:center">
+	<h1 data-ui="typeSize" style="font-family:serif;">Use the slider to change the type size</h1>
+	<hr>
+	<h1 data-ui="typeSize" style="font-family:sans-serif;">Use the slider to change the type size</h1>
+	<hr>
+	<h1 data-ui="typeSize" style="font-family:monospace;">Use the slider to change the type size</h1>
+	</div>
+	<div>
+		<button data-ui="add">Add Adder</button>
+		<button data-ui="clicker">Add Item</button>
+	</div>
+
+
+	<div data-ui="router"></div>
+
+	<div data-ui="hello"></div>
+	<a data-ui="link" href="#test1">Test 1</a>
+	<a data-ui="link" href="#test2">Test 2</a>
+
+	<input data-ui="setcolor" value="" />
+
+	
+	<div data-ui="dataload,dataview" data-watch="items,uri,albums,page,perPage">
+
+		{% if items %}
+		<h1>Items: {{ items }}</h1>
+		{% else %}
+		<h1>No items yet</h1>
+		{% endif %}
+
+		{% if uri %}
+			<h2>{{uri}}</h2>
+			<div data-bg="{{ color }}" data-ui="color">{{ color }}</div>
+			<div data-ui="alert" data-message="{{ uri }}">Say {{uri}}</div>
+		{% else %}
+			<h2>Waiting for data...</h2>
+		{% endif %}
+
+		{% if albums %}
+
+			{% set list = albums.slice((page - 1) * perPage,page * perPage) %}
+
+			<h1>{{ albums.length }} Albums</h1>
+			<h2>Page {{ page }} of {{ albums.length / perPage }}</h2>
+
+			<ul>
+			
+			{% for album in list %}
+  				<li>{{ album.title }}</li>
+  			{% endfor %}
+  			</ul>
+
+  			
+
+  			Per Page: <select data-ui="pageCount">
+
+  				{% for p in [25,50,100] %}
+	  				{% set selected = (p == perPage) %}
+	  				{% if selected %}
+	  					<option value="{{p}}" selected>{{p}}</option>
+	  				{% else %}
+	  					<option value="{{p}}">{{p}}</option>
+	  				{% endif %}
+  				{% endfor %}
+
+  			</select>
+  			<button data-ui="prevPage">Previous page</button>
+			<button data-ui="nextPage">Next page</button>
+
+		{% endif %}
+
+
+
+	</div>
+
+
+	<div id="wrapper">
+		<div id="items">
+			
+		</div>
+		<div>
+		<ul id="things">
+			
+		</ul>
+
+	</div>
+	  
+</body>
+</html>
