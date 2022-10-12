@@ -189,7 +189,7 @@ function site(config) {
 	function mountComponent(node, type) {
 		if (!COMPONENTS.hasOwnProperty(type)) return;
 		var onFind = COMPONENTS[type].onFind;
-		onFind.call(node);
+		if (onFind) onFind.call(node);
 	}
 
 	/*
@@ -200,7 +200,7 @@ function site(config) {
 	function unmountComponent(node, type) {
 		if (!COMPONENTS.hasOwnProperty(type)) return;
 		var onRemove = COMPONENTS[type].onRemove;
-		onRemove.call(node);
+		if (onRemove) onRemove.call(node);
 	}
 
 	function setData(label, value, publish) {
@@ -216,7 +216,7 @@ function site(config) {
 	}
 
 	function getData(label) {
-		return DATA[label];
+		return label ? DATA[label] : DATA;
 	}
 
 	function dataChanged() {
@@ -251,12 +251,14 @@ function site(config) {
 		characterData: false,
 	};
 
-	// pass in the target node, as well as the observer options
-	observer.observe(target, observerconfig);
-
 	this.addUI = addUI;
 	this.setData = setData;
 	this.getData = getData;
+
+	this.run = function () {
+		// pass in the target node, as well as the observer options
+		observer.observe(target, observerconfig);
+	};
 
 	return this;
 }
