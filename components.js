@@ -1,277 +1,188 @@
-// Object assign polyfill
-if (typeof Object.assign != "function") {
-	// Must be writable: true, enumerable: false, configurable: true
-	Object.defineProperty(Object, "assign", {
-		value: function assign(target, varArgs) {
-			// .length of function is 2
-			"use strict";
-			if (target == null) {
-				// TypeError if undefined or null
-				throw new TypeError(
-					"Cannot convert undefined or null to object"
-				);
-			}
+(function () {
+	var demo = new site({ target: document });
+	var addUI = demo.addUI;
+	var setData = demo.setData;
+	var getData = demo.getData;
 
-			var to = Object(target);
+	var DATA = getData();
 
-			for (var index = 1; index < arguments.length; index++) {
-				var nextSource = arguments[index];
+	addUI("hello", function () {
+		this.innerHTML = "Hello World";
+	});
 
-				if (nextSource != null) {
-					// Skip over if undefined or null
-					for (var nextKey in nextSource) {
-						// Avoid bugs when hasOwnProperty is shadowed
-						if (
-							Object.prototype.hasOwnProperty.call(
-								nextSource,
-								nextKey
-							)
-						) {
-							to[nextKey] = nextSource[nextKey];
-						}
-					}
-				}
-			}
-			return to;
+	addUI("color", function () {
+		var bg = this.getAttribute("data-bg");
+		this.style.backgroundColor = bg;
+	});
+
+	addUI("adder", function () {
+		this.innerHTML =
+			'<button data-ui="clicker">Add Item</button><a data-ui="link" href="#tester">Tester link!</a><span data-ui="color" data-bg="yellow">Yellow</span>';
+	});
+
+	addUI("item", function () {
+		this.innerHTML = '<div class="Item">' + this.innerHTML + "</div>";
+	});
+
+	addUI("img", function () {
+		this.innerHTML =
+			'<img data-ui="hello" src="' +
+			this.getAttribute("data-src") +
+			'" />';
+	});
+
+	addUI("dataviewoff", function () {
+		this.innerHTML = "SNOO";
+	});
+
+	addUI("dataview", {
+		onFind: function () {
+			this.template = this.innerHTML;
+			var data = Object.assign({}, DATA);
+			nunjucks.configure({ autoescape: true });
+
+			this.innerHTML = nunjucks.renderString(this.template, data);
 		},
-		writable: true,
-		configurable: true,
-	});
-}
+		onDataChanged: function (data, keys) {
+			console.log(data);
 
-// Basic Mutation Observer runs on dom ready and on interval
-if (!("MutationObserver" in window)) {
-	// do stuff
-
-	window.MutationObserver = function (fn) {
-		this.observe = function () {
-			// If document is already loaded, run method
-			if (document.readyState === "complete") {
-				fn();
-			}
-
-			// Otherwise, wait until document is loaded
-			document.addEventListener("DOMContentLoaded", fn, false);
-
-			setInterval(fn, 1000);
-		};
-	};
-}
-
-function site(config) {
-	var site = {};
-
-	// select the target node from config, or default to the document
-	var target = config.hasOwnProperty("target") ? config.target : document;
-	var HANDLED = [];
-	var COMPONENTS = {};
-
-	// Data store for this site
-	var DATA = {};
-	var KEYS_CHANGED = [];
-
-	/*
-		Observe the DOM for changes
-	*/
-	var observer = new MutationObserver(function (mutations) {
-		runUpdate();
+			nunjucks.configure({ autoescape: true });
+			this.innerHTML = nunjucks.renderString(this.template, data);
+		},
 	});
 
-	/*
+	addUI("dataload", {
+		onFind: function () {
+			var xhr = new XMLHttpRequest();
+			let proto = window.location.protocol;
+			if (!proto.match("http")) proto = "http:";
 
-		runUpdate
-		Process all unhandled components
+			xhr.open("GET", proto + "//jsonplaceholder.typicode.com/photos");
+			xhr.onload = function () {
+				if (xhr.status === 200) {
+					var albums = JSON.parse(xhr.responseText);
 
-	*/
+					setData("page", 1);
 
-	function runUpdate() {
-		var components = getUnhandledComponents();
-
-		if (components.length) {
-			handleNodes({ nodes: components });
-		}
-	}
-
-	/*
-		getComponents
-		Search the DOM for unhandled components
-	*/
-
-	function getUnhandledComponents() {
-		var components = target.querySelectorAll(
-			"[data-ui]:not([data-handled])"
-		);
-
-		return components;
-	}
-
-	/*
-		handleNodes
-		Initialise an array of Elements component
-	*/
-
-	function handleNodes(settings) {
-		var nodes = settings.nodes;
-
-		for (i = 0; i < nodes.length; i++) {
-			/*
-				
-				1 = Element
-				2 = attribute
-				3 = text
-				8 = comment
-
-			*/
-			if (nodes[i].nodeType == 1) {
-				if (nodes[i].getAttribute("data-ui")) {
-					var isHandled = HANDLED.indexOf(nodes[i]) != -1;
-					//var isHandled = nodes[i].getAttribute('data-handled');
-					if (!isHandled) {
-						var types = nodes[i].getAttribute("data-ui").split(",");
-
-						HANDLED.push(nodes[i]);
-						nodes[i].setAttribute("data-handled", true);
-
-						var t;
-						for (t = 0; t < types.length; t++) {
-							var type = types[t];
-
-							mountComponent(nodes[i], type);
-						}
-					} else {
-						// Already handled this node
-						//console.log('Already handled',nodes[i]);
-					}
-				}
-			}
-		}
-	}
-
-	/*
-		withActiveNodes
-		Loop through all active nodes and run a callback with the node and the type
-	*/
-
-	function withActiveNodes(callback) {
-		var nodes = HANDLED;
-
-		for (i = 0; i < nodes.length; i++) {
-			var types = nodes[i].getAttribute("data-ui").split(",");
-
-			var t;
-			for (t = 0; t < types.length; t++) {
-				var type = types[t];
-
-				callback(nodes[i], type);
-			}
-		}
-	}
-
-	/*
-		addUI
-		Register a component
-	*/
-
-	function addUI(label, component) {
-		//var DOMName = label.charAt(0).toUpperCase() + label.slice(1);
-		//site['UI'+DOMName] = document.registerElement('ui-'+label);
-
-		var base = {
-			init: function () {},
-			onFind: function () {},
-			onRemove: function () {},
-		};
-
-		if (typeof component == "function") {
-			base.onFind = component;
-		} else {
-			// TODO: Copy and extend base
-			base = component;
-		}
-
-		COMPONENTS[label] = base;
-	}
-
-	/*
-		mountComponent
-		New component has appeared
-	*/
-
-	function mountComponent(node, type) {
-		if (!COMPONENTS.hasOwnProperty(type)) return;
-		var onFind = COMPONENTS[type].onFind;
-		if (onFind) onFind.call(node);
-	}
-
-	/*
-		unmountComponent
-		Component has been removed
-	*/
-
-	function unmountComponent(node, type) {
-		if (!COMPONENTS.hasOwnProperty(type)) return;
-		var onRemove = COMPONENTS[type].onRemove;
-		if (onRemove) onRemove.call(node);
-	}
-
-	function setData(label, value, publish) {
-		DATA[label] = value;
-		KEYS_CHANGED.push(label);
-
-		if (
-			typeof publish == "undefined" ||
-			(typeof publish != "undefined" && publish)
-		) {
-			dataChanged();
-		}
-	}
-
-	function getData(label) {
-		return label ? DATA[label] : DATA;
-	}
-
-	function dataChanged() {
-		//var data = Object.assign({},DATA);
-		var data = DATA;
-
-		withActiveNodes(function (node, type) {
-			var com = COMPONENTS[type];
-			if (com && com.hasOwnProperty("onDataChanged")) {
-				var doUpdate = 0;
-				var watchKeys = node.getAttribute("data-watch");
-				if (watchKeys) {
-					var watchArr = watchKeys.split(",");
-					for (k = 0; k < KEYS_CHANGED.length; k++) {
-						if (watchArr.indexOf(KEYS_CHANGED[k]) != -1)
-							doUpdate = 1;
-					}
+					setData("perPage", 25);
+					setData("albums", albums);
 				} else {
-					doUpdate = 1;
+					alert("Request failed.  Returned status of " + xhr.status);
 				}
-				if (doUpdate) com.onDataChanged.call(node, data, KEYS_CHANGED);
-			}
+			};
+			xhr.send();
+		},
+	});
+
+	addUI("router", function () {
+		setData("uri", window.location.href);
+		window.onpopstate = function () {
+			setData("uri", window.location.href);
+		};
+	});
+
+	addUI("link", function () {
+		this.addEventListener("click", function (ev) {
+			ev.preventDefault();
+
+			window.history.pushState(
+				{},
+				this.getAttribute("href"),
+				this.getAttribute("href")
+			);
+			setData("uri", window.location.href);
 		});
+	});
 
-		KEYS_CHANGED = [];
-	}
+	addUI("add", function () {
+		this.addEventListener("click", function () {
+			var item = document.createElement("LI");
+			item.innerHTML =
+				'<div data-bg="blue" data-ui="hello,adder,color">Item</div>';
 
-	var observerconfig = {
-		subtree: true,
-		attributes: false,
-		childList: true,
-		characterData: false,
-	};
+			document.getElementById("things").appendChild(item);
+		});
+	});
 
-	this.addUI = addUI;
-	this.setData = setData;
-	this.getData = getData;
+	addUI("hello", function () {
+		this.addEventListener("click", function () {
+			alert("msg" + this.getAttribute("data-message"));
+		});
+	});
 
-	this.run = function () {
-		// pass in the target node, as well as the observer options
-		observer.observe(target, observerconfig);
-		// Run first update incase there are already components that the MO misses
-		runUpdate();
-	};
+	addUI("setcolor", function () {
+		this.addEventListener("blur", function () {
+			setData("color", this.value);
+		});
+	});
 
-	return this;
-}
+	addUI("range", function () {
+		let key = this.getAttribute("data-key");
+
+		this.addEventListener("input", function () {
+			setData(key, this.value);
+		});
+	});
+
+	addUI("typeSize", {
+		onFind: function () {
+			setData("typeSize", 50);
+		},
+		onDataChanged: function (data, keys) {
+			console.log("fontsize", data["typeSize"]);
+			this.style.fontSize = data["typeSize"] + "px";
+		},
+	});
+
+	addUI("clicker", function () {
+		//var items = [];
+		//setData('items',items);
+
+		this.addEventListener("click", function () {
+			var item = document.createElement("LI");
+			item.innerHTML =
+				'<div data-ui="color" data-bg="green"><div data-ui="item"><div data-ui="img" data-src="https://images.unsplash.com/photo-1541599468348-e96984315921?ixlib=rb-0.3.5&ixid=eyJhcHBfaWQiOjEyMDd9&s=75314eaa14a121a4f0db49d894ce63fc&auto=format&fit=crop&w=655&q=80"></div></div>';
+
+			document.getElementById("things").appendChild(item);
+			//items.push('item');
+			setData(
+				"items",
+				document.getElementById("things").childElementCount
+			);
+		});
+	});
+
+	addUI("nextPage", function () {
+		//var items = [];
+		//setData('items',items);
+
+		this.addEventListener("click", function () {
+			var cur = getData("page");
+			setData("page", cur + 1);
+		});
+	});
+
+	addUI("prevPage", function () {
+		//var items = [];
+		//setData('items',items);
+
+		this.addEventListener("click", function () {
+			var cur = getData("page");
+			var prev = cur - 1;
+			if (prev < 1) prev = 1;
+			setData("page", prev);
+		});
+	});
+
+	addUI("pageCount", function () {
+		this.addEventListener("change", function () {
+			setData("perPage", parseInt(this.value));
+		});
+	});
+
+	// Start listening...
+	demo.run();
+
+	// ^^ Keep your scripts inside this IIFE function call to
+	// avoid leaking your variables into the global scope.
+})();
