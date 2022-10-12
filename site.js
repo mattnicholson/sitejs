@@ -74,12 +74,23 @@ function site(config) {
 		Observe the DOM for changes
 	*/
 	var observer = new MutationObserver(function (mutations) {
+		runUpdate();
+	});
+
+	/*
+
+		runUpdate
+		Process all unhandled components
+
+	*/
+
+	function runUpdate() {
 		var components = getUnhandledComponents();
 
 		if (components.length) {
 			handleNodes({ nodes: components });
 		}
-	});
+	}
 
 	/*
 		getComponents
@@ -258,6 +269,8 @@ function site(config) {
 	this.run = function () {
 		// pass in the target node, as well as the observer options
 		observer.observe(target, observerconfig);
+		// Run first update incase there are already components that the MO misses
+		runUpdate();
 	};
 
 	return this;
